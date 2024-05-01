@@ -1,0 +1,79 @@
+<#
+.SYNOPSIS
+    A quickstart script for SvelteKit + Tailwind CSS with daisyUI.
+
+.DESCRIPTION
+    This script initializes a new SvelteKit project with optional Tailwind CSS and daisyUI configuration and development server startup.
+
+.PARAMETER ProjectName
+    The name of the new project.
+
+.PARAMETER Tailwind
+    Indicates whether to configure Tailwind CSS along with daisyUI.
+
+.PARAMETER RunDev
+    Indicates whether to open VSCode and run the npm development server.
+
+.EXAMPLE
+    .\sven.ps1 -ProjectName "myproject" -Tailwind -RunDev
+#>
+
+param(
+    [string]$ProjectName,
+    [switch]$Tailwind,
+    [switch]$RunDev
+)
+
+function Show-Usage {
+    Write-Host "sven - a quickstart script for SvelteKit + Tailwind CSS with daisyUI"
+    Write-Host "Usage: sven [-Tailwind] [-RunDev] -ProjectName <name>"
+    Write-Host "Options:"
+    Write-Host "-Tailwind  Configure Tailwind CSS along with daisyUI"
+    Write-Host "-RunDev    Open VSCode and npm run dev"
+    Write-Host "ProjectName: A name for your project"
+    exit
+}
+
+# Check if project name is provided
+if (-not $ProjectName) {
+    Write-Host "Error: You need to specify a project name!"
+    Show-Usage
+}
+
+# Make sure npm is installed
+if (-not (Get-Command "npm" -ErrorAction SilentlyContinue)) {
+    Write-Error "Error: npm is not installed"
+    exit
+}
+else {
+    Write-Host "found npm version $(npm -v)"
+}
+
+Write-Host "Initializing SvelteKit project: $(Get-Location)/$ProjectName"
+npm create svelte@latest $ProjectName
+Set-Location $ProjectName
+"---`nSvelteKit Installation" | Out-File -FilePath "./sven.log"
+npm install | Out-File -FilePath "./sven.log" -Append
+Write-Host "SvelteKit initialization complete"
+
+# If -Tailwind is specified, configure Tailwind CSS and daisyUI
+if ($Tailwind) {
+    Write-Host "Configuring Tailwind CSS and daisyUI"
+    "Tailwind CSS and daisyUI Configuration" | Out-File -FilePath "./sven.log" -Append
+    npm i -D tailwindcss postcss autoprefixer daisyui | Out-File -FilePath "./sven.log" -Append
+    npx tailwindcss init -p | Out-File -FilePath "./sven.log" -Append
+    (Get-Content -Path "./tailwind.config.js") -replace 'content: \[\],', "content: ['./src/**/*.{html,js,svelte,ts}']," | Set-Content -Path "./tailwind.config.js"
+    (Get-Content -Path "./tailwind.config.js") -replace 'plugins: \[\],', "plugins: [require('daisyui')]," | Set-Content -Path "./tailwind.config.js"
+    "@tailwind base;`n@tailwind components;`n@tailwind utilities;" | Set-Content -Path "./src/app.css"
+    "<script>`nimport '../app.css';`n</script>`n`n<slot />'" | Set-Content -Path "./src/routes/+layout.svelte"
+    "<h1 class='text-3xl font-bold'><span class='text-orange-600'>SvelteKit</span><span class='mx-1'>+</span><span class='text-sky-500'>Tailwind CSS</span><br><span class='text-fuchsia-700 mx-1 text-xl font-light'>and daisyUI</span><span class='ml-1 text-xl font-light'>installed with</span><span class='text-fuchsia-700 mx-1 text-xl font-light'>sven</span></h1>" | Set-Content -Path "./src/routes/+page.svelte"
+    Write-Host "Tailwind CSS and daisyUI configuration complete"
+}
+
+# If -RunDev is specified, launch and run dev
+if ($RunDev) {
+    Write-Host "Launching $ProjectName ..."
+    code .
+    npm run dev -- --open
+}
+
